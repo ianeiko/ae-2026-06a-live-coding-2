@@ -480,7 +480,7 @@ frontend calls the Cloud Run URL from the browser.
 cd apps/api
 set -a && . ../../.env && set +a
 gcloud run deploy langgraph-api --source . --allow-unauthenticated \
-  --set-env-vars "^##^OPENROUTER_API_KEY=$OPENROUTER_API_KEY##OPENROUTER_BASE_URL=$OPENROUTER_BASE_URL##OPENROUTER_MODEL=$OPENROUTER_MODEL"
+  --set-env-vars "^##^OPENROUTER_API_KEY=$OPENROUTER_API_KEY##OPENROUTER_BASE_URL=$OPENROUTER_BASE_URL##OPENROUTER_MODEL=$OPENROUTER_MODEL##LANGCHAIN_TRACING_V2=true##LANGSMITH_API_KEY=$LANGSMITH_API_KEY##LANGSMITH_PROJECT=$LANGSMITH_PROJECT"
 ```
 
 `--source .` builds the `Dockerfile` with Cloud Build; no local Docker needed.
@@ -527,3 +527,4 @@ Network shows `POST https://langgraph-api-...run.app/chat → 200`. A request to
 | Google-branded 404 on `/healthz` | `/healthz` is reserved by Google's frontend — it answers before the request reaches your container | probe `/health` instead; both are wired in `app.py` |
 | `undefined/chat` in the deployed bundle | `NEXT_PUBLIC_API_URL` was added after the build | `vercel --prod` again |
 | 500 naming `OPENROUTER_*` from Cloud Run | env vars dropped on a redeploy | pass the full `--set-env-vars` every time |
+| chat works but LangSmith shows nothing | `LANGSMITH_*` never deployed — tracing is off unless the vars are present | include them in `--set-env-vars`; a project with no runs yet does not appear in the UI at all |
