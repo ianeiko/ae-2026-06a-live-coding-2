@@ -11,6 +11,9 @@ requires-python = ">=3.10"
 dependencies = [
     "langgraph>=1.0.0",
     "python-dotenv>=1.0.1",
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "langchain-openai>=0.3.0",
 ]
 
 
@@ -58,8 +61,14 @@ convention = "google"
 [dependency-groups]
 dev = [
     "anyio>=4.7.0",
+    "httpx>=0.28.1",
     "langgraph-cli[inmem]>=0.4.14",
     "mypy>=1.13.0",
     "pytest>=9.0.3",
     "ruff>=0.8.2",
+]
+
+[tool.pytest.ini_options]
+markers = [
+    "integration: hits the real model over the network; needs OPENROUTER_API_KEY",
 ]

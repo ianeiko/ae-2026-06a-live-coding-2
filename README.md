@@ -207,7 +207,7 @@ cp .env.example .env
 | --- | --- |
 | `OPENROUTER_API_KEY` | https://openrouter.ai/keys |
 | `OPENROUTER_BASE_URL` | `https://openrouter.ai/api/v1` — leave as is |
-| `OPENROUTER_MODEL` | defaults to `anthropic/claude-haiku-4.5` (cheap, fast) |
+| `OPENROUTER_MODEL` | required, no default — use `anthropic/claude-haiku-4.5` (cheap, fast) |
 | `PORT` | local only; Cloud Run injects its own |
 
 The frontend has its own env file, `apps/web/.env.local` (§7):
@@ -266,8 +266,9 @@ only for LangSmith tracing and LangSmith Deployment, neither of which we use.
 `LANGSMITH_PROJECT` in `.env.example` is optional; ignore it.
 
 This dev server is not what we deploy. Claude wraps the same graph in a small
-FastAPI app (`POST /chat`, `GET /healthz`, binding `0.0.0.0:$PORT`) with a plain
-`python:3.12-slim` Dockerfile — that is what Cloud Run builds in §2.
+FastAPI app (`POST /chat`, `GET /healthz`, binding `0.0.0.0:$PORT`) with a
+`python:3.12-slim` Dockerfile that installs with `uv` — that is what Cloud Run
+builds in §2.
 
 ## 7. Scaffold the frontend
 
@@ -289,8 +290,9 @@ echo 'NEXT_PUBLIC_API_URL=http://localhost:8000' > .env.local
 npm run dev
 ```
 
-Open http://localhost:3000 — the Next.js starter page renders. That is all you
-can check right now; there is no UI yet.
+Open http://localhost:3000. Before §9 that is the Next.js starter page; after
+§9 it is the chat UI. Either way, all you can check here is that the page
+serves — the backend round trip is the next block.
 
 ```bash
 # in a second terminal
@@ -309,10 +311,18 @@ frontend on 3000 — and check the full path:
 
 ```bash
 # 1. backend reachable on its own
+curl localhost:8000/healthz
+# {"ok":true}
+
 curl -X POST localhost:8000/chat \
   -H 'content-type: application/json' \
-  -d '{"message":"hello"}'
+  -d '{"messages":[{"role":"user","content":"say hi in three words"}]}'
+# {"reply":"Hi there friend"}
 ```
+
+`/chat` takes the **whole** history every request — the backend is stateless, so
+`{"message":"hello"}` is a 422. `/healthz` makes no model call and needs no key,
+so it is the first thing to try when the container starts but `/chat` 500s.
 
 Then in the browser at http://localhost:3000, send a message and confirm a reply
 appears. If the page loads but sending does nothing, open DevTools → Network:
@@ -320,8 +330,9 @@ appears. If the page loads but sending does nothing, open DevTools → Network:
 | What you see | Cause | Fix |
 | --- | --- | --- |
 | Request to `undefined/chat` | `NEXT_PUBLIC_API_URL` not set | it must be in `apps/web/.env.local`, then restart `npm run dev` — `NEXT_PUBLIC_*` is baked in at build time |
-| CORS error | backend has no CORS middleware | FastAPI needs `CORSMiddleware` allowing `http://localhost:3000` and the Vercel URL |
+| CORS error | backend has no CORS middleware | FastAPI needs `CORSMiddleware`; we allow `*` because the endpoint is public and every Vercel preview has its own origin — pin it in a real app |
 | 404 on `/chat` | route mismatch | backend path must be exactly `POST /chat` |
+| 500 naming a missing env var | key or model slug not set | the backend reads env only — check the root `.env`, then restart it |
 | Connection refused | backend not running | start it first |
 
 After deploying, repeat this against production: set `NEXT_PUBLIC_API_URL` to the
