@@ -463,7 +463,7 @@ so read the response, not just the status code.
 | Next.js says `Local: http://localhost:8000` | you sourced the root `.env`, and its `PORT=8000` leaked into `npm run dev` | start the frontend in a clean shell, or `env -u PORT npm run dev` |
 | 500 naming `OPENROUTER_*` | key or model slug missing | fill it in the root `.env`, restart the backend |
 | 404 from OpenRouter | model slug isn't a real one | copy it exactly from https://openrouter.ai/models |
-| `LangSmithError: 403` in test output | tracing is on and the key was rejected — usually a key from the other LangSmith region (a US key 403s against `eu.api.smith.langchain.com`) | noise, not a test failure; check the key at https://smith.langchain.com, or set `LANGCHAIN_TRACING_V2=false` in `apps/api/.env` to silence it |
+| `LangSmithError: 403` in test output | tracing is on and the key was rejected. A key belongs to one region and only works against that region's host: US keys against `api.smith.langchain.com` (the SDK default), EU keys against `eu.api.smith.langchain.com`. We set no host override, so a US key is what this repo expects | noise, not a test failure. For an EU key, set `LANGSMITH_ENDPOINT=https://eu.api.smith.langchain.com` in `apps/api/.env` (and pass it to Cloud Run); otherwise use a US key from https://smith.langchain.com. `LANGCHAIN_TRACING_V2=false` silences tracing entirely |
 
 ### The tests
 
