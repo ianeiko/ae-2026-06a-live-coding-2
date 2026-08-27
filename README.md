@@ -209,7 +209,10 @@ cp .env.example .env
 | `OPENROUTER_BASE_URL` | `https://openrouter.ai/api/v1` — leave as is |
 | `OPENROUTER_MODEL` | defaults to `anthropic/claude-haiku-4.5` (cheap, fast) |
 | `PORT` | local only; Cloud Run injects its own |
-| `NEXT_PUBLIC_API_URL` | `http://localhost:8000` until the backend is deployed |
+
+The frontend has its own env file, `apps/web/.env.local` (§7):
+`NEXT_PUBLIC_API_URL` — `http://localhost:8000` until the backend is deployed,
+then the Cloud Run URL.
 
 Model slugs must match https://openrouter.ai/models exactly — a wrong slug fails
 at request time, not at startup. OpenRouter is OpenAI-compatible, so the backend
@@ -277,6 +280,53 @@ npx create-next-app@latest apps/web --ts --app --tailwind --eslint \
 
 Then strip the boilerplate page down to a message list, an input, and a fetch to
 `process.env.NEXT_PUBLIC_API_URL`. Claude does this in §9.
+
+### Verify it runs locally
+
+```bash
+cd apps/web
+echo 'NEXT_PUBLIC_API_URL=http://localhost:8000' > .env.local
+npm run dev
+```
+
+Open http://localhost:3000 — the Next.js starter page renders. That is all you
+can check right now; there is no UI yet.
+
+```bash
+# in a second terminal
+curl -s -o /dev/null -w '%{http_code}\n' localhost:3000
+# 200
+```
+
+Common failures: port 3000 already in use (Next picks 3001 and says so — use
+that URL), or a stale `node_modules` after switching Node versions (`rm -rf
+node_modules && npm install`).
+
+### Verify it talks to the backend (after §9)
+
+Once Claude has built the chat page, run **both** servers — backend on 8000,
+frontend on 3000 — and check the full path:
+
+```bash
+# 1. backend reachable on its own
+curl -X POST localhost:8000/chat \
+  -H 'content-type: application/json' \
+  -d '{"message":"hello"}'
+```
+
+Then in the browser at http://localhost:3000, send a message and confirm a reply
+appears. If the page loads but sending does nothing, open DevTools → Network:
+
+| What you see | Cause | Fix |
+| --- | --- | --- |
+| Request to `undefined/chat` | `NEXT_PUBLIC_API_URL` not set | it must be in `apps/web/.env.local`, then restart `npm run dev` — `NEXT_PUBLIC_*` is baked in at build time |
+| CORS error | backend has no CORS middleware | FastAPI needs `CORSMiddleware` allowing `http://localhost:3000` and the Vercel URL |
+| 404 on `/chat` | route mismatch | backend path must be exactly `POST /chat` |
+| Connection refused | backend not running | start it first |
+
+After deploying, repeat this against production: set `NEXT_PUBLIC_API_URL` to the
+Cloud Run URL in the Vercel dashboard (or `vercel env add`), redeploy the
+frontend, and send one message on the live site.
 
 ## 8. Create the spec issue
 
