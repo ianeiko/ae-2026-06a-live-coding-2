@@ -53,8 +53,12 @@ class ChatResponse(BaseModel):
     reply: str
 
 
+# `/healthz` is a reserved path on Google's frontend: on Cloud Run it is answered
+# with a Google 404 and never reaches the container. `/health` is the probe that
+# works everywhere; `/healthz` stays for local runs and other platforms.
+@app.get("/health")
 @app.get("/healthz")
-async def healthz() -> dict[str, bool]:
+async def health() -> dict[str, bool]:
     """Liveness probe. No LLM call, no API key needed."""
     return {"ok": True}
 

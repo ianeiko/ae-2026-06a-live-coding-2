@@ -266,7 +266,7 @@ only for LangSmith tracing and LangSmith Deployment, neither of which we use.
 `LANGSMITH_PROJECT` in `.env.example` is optional; ignore it.
 
 This dev server is not what we deploy. Claude wraps the same graph in a small
-FastAPI app (`POST /chat`, `GET /healthz`, binding `0.0.0.0:$PORT`) with a
+FastAPI app (`POST /chat`, `GET /health`, binding `0.0.0.0:$PORT`) with a
 `python:3.12-slim` Dockerfile that installs with `uv` — that is what Cloud Run
 builds in §2.
 
@@ -311,7 +311,7 @@ frontend on 3000 — and check the full path:
 
 ```bash
 # 1. backend reachable on its own
-curl localhost:8000/healthz
+curl localhost:8000/health
 # {"ok":true}
 
 curl -X POST localhost:8000/chat \
@@ -321,7 +321,7 @@ curl -X POST localhost:8000/chat \
 ```
 
 `/chat` takes the **whole** history every request — the backend is stateless, so
-`{"message":"hello"}` is a 422. `/healthz` makes no model call and needs no key,
+`{"message":"hello"}` is a 422. `/health` makes no model call and needs no key,
 so it is the first thing to try when the container starts but `/chat` 500s.
 
 Then in the browser at http://localhost:3000, send a message and confirm a reply
@@ -400,7 +400,7 @@ time and watch each check pass. Same commands either way.
 ## 10. Run it locally
 
 The output of [issue #1](https://github.com/ianeiko/ae-2026-06a-live-coding-2/issues/1):
-a FastAPI wrapper around the graph (`POST /chat`, `GET /healthz`) and a one-page
+a FastAPI wrapper around the graph (`POST /chat`, `GET /health`) and a one-page
 chat UI. Two terminals, because both servers run in the foreground.
 
 **Terminal 1 — backend on 8000.** It reads the keys from the repo-root `.env`
@@ -427,7 +427,7 @@ you where to look.
 
 ```bash
 # 1. server up at all — no model call, no key needed
-curl localhost:8000/healthz
+curl localhost:8000/health
 # {"ok":true}
 
 # 2. the key and the model slug work
@@ -463,3 +463,67 @@ cd ../web && npm run build       # types + lint + build
 ```
 
 Once all of this is green, #2 (Cloud Run + Vercel) is unblocked.
+
+## 11. Deploy it
+
+Both halves are live. `apps/api` on Cloud Run, `apps/web` on Vercel, and the
+frontend calls the Cloud Run URL from the browser.
+
+| Service | URL | Deployed with |
+| --- | --- | --- |
+| backend (`apps/api`) | https://langgraph-api-116820946223.europe-west1.run.app | `gcloud run deploy` |
+| frontend (`apps/web`) | https://langgraph-chat-web.vercel.app | `vercel --prod` |
+
+### Backend → Cloud Run
+
+```bash
+cd apps/api
+set -a && . ../../.env && set +a
+gcloud run deploy langgraph-api --source . --allow-unauthenticated \
+  --set-env-vars "^##^OPENROUTER_API_KEY=$OPENROUTER_API_KEY##OPENROUTER_BASE_URL=$OPENROUTER_BASE_URL##OPENROUTER_MODEL=$OPENROUTER_MODEL"
+```
+
+`--source .` builds the `Dockerfile` with Cloud Build; no local Docker needed.
+The `^##^` prefix swaps the delimiter to `##` so the API key's commas don't
+split into bogus vars. Region and project come from `gcloud config`
+(`europe-west1`, `project1-506806` here).
+
+Cloud Run has no `.env` — every var the container reads must be in
+`--set-env-vars`, and passing them again on a later deploy is required, since
+each deploy replaces the whole set.
+
+### Frontend → Vercel
+
+```bash
+cd apps/web
+vercel link --yes --project langgraph-chat-web
+for e in production preview development; do
+  echo https://langgraph-api-116820946223.europe-west1.run.app | vercel env add NEXT_PUBLIC_API_URL $e
+done
+vercel --prod --yes
+```
+
+Order matters. `NEXT_PUBLIC_*` is inlined into the JS bundle **at build time**,
+so the env var has to exist before `vercel --prod`. Set it after, and the
+deployed bundle still says `undefined/chat` until you redeploy.
+
+### Verify it
+
+```bash
+API=https://langgraph-api-116820946223.europe-west1.run.app
+curl -s $API/health                              # {"ok":true}
+curl -s -X POST $API/chat -H 'content-type: application/json' \
+  -d '{"messages":[{"role":"user","content":"say hi in three words"}]}'
+# {"reply":"Hello there friend"}
+```
+
+Then the browser, which is the only check that catches a stale bundle: open
+https://langgraph-chat-web.vercel.app, send a message, and confirm DevTools →
+Network shows `POST https://langgraph-api-...run.app/chat → 200`. A request to
+`undefined/chat` or `localhost:8000` means the build predates the env var.
+
+| What you see | Cause | Fix |
+| --- | --- | --- |
+| Google-branded 404 on `/healthz` | `/healthz` is reserved by Google's frontend — it answers before the request reaches your container | probe `/health` instead; both are wired in `app.py` |
+| `undefined/chat` in the deployed bundle | `NEXT_PUBLIC_API_URL` was added after the build | `vercel --prod` again |
+| 500 naming `OPENROUTER_*` from Cloud Run | env vars dropped on a redeploy | pass the full `--set-env-vars` every time |

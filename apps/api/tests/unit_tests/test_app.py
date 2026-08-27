@@ -27,8 +27,11 @@ def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
     return TestClient(app_module.app)
 
 
-def test_healthz(client: TestClient) -> None:
-    res = client.get("/healthz")
+# Both paths, on purpose: `/healthz` is reserved by Google's frontend and never
+# reaches a Cloud Run container, so `/health` is the one production can probe.
+@pytest.mark.parametrize("path", ["/health", "/healthz"])
+def test_health(client: TestClient, path: str) -> None:
+    res = client.get(path)
     assert res.status_code == 200
     assert res.json() == {"ok": True}
 
