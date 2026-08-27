@@ -339,33 +339,43 @@ After deploying, repeat this against production: set `NEXT_PUBLIC_API_URL` to th
 Cloud Run URL in the Vercel dashboard (or `vercel env add`), redeploy the
 frontend, and send one message on the live site.
 
-## 8. Create the spec issues
+## 8. The spec issues
+
+Already written — both live in this repo as `ISSUE-1.md` / `ISSUE-2.md` and on
+GitHub as issues [#1](https://github.com/ianeiko/ae-2026-06a-live-coding-2/issues/1)
+and [#2](https://github.com/ianeiko/ae-2026-06a-live-coding-2/issues/2), so the
+spec is in the clone as well as in the tracker. Nothing to create; read them,
+then go to §9.
+
+```bash
+gh issue list
+gh issue view 1
+```
+
+- **#1** (closed) — FastAPI wrapper, real LLM call in the graph node, chat UI,
+  Dockerfile, tests. Acceptance is four local checks, one of them a real browser.
+- **#2** (open) — Cloud Run + Vercel, six prompts, verified end to end. Blocked
+  by #1.
 
 Two issues, not one: the wiring is worth confirming locally before anything is
 deployed, and a single issue makes "we're happy with local, now ship it" an
-invisible step.
+invisible step. #2 is marked blocked by #1, so it can't be picked up early.
+
+<details>
+<summary>How they were created (if you are rebuilding this repo from scratch)</summary>
 
 ```bash
 gh issue create --title "Wire the LangGraph backend to the Next.js frontend (local)" \
   --body-file ISSUE-1.md
 gh issue create --title "Deploy to Cloud Run + Vercel and verify end to end" \
   --body-file ISSUE-2.md
-```
 
-- **#1** — FastAPI wrapper, real LLM call in the graph node, chat UI, Dockerfile,
-  tests. Acceptance is four local checks, one of them a real browser.
-- **#2** — Cloud Run + Vercel, six prompts, verified end to end. Blocked by #1.
-
-Both issues are committed as `ISSUE-1.md` / `ISSUE-2.md`, so the spec is in the
-clone as well as on GitHub.
-
-Mark the dependency so #2 can't be picked up early:
-
-```bash
 ID=$(gh api repos/<owner>/<repo>/issues/1 --jq .id)
 gh api --method POST repos/<owner>/<repo>/issues/2/dependencies/blocked_by \
   -F issue_id=$ID
 ```
+
+</details>
 
 ## 9. Let Claude build it
 
