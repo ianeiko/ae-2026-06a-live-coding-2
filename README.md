@@ -200,14 +200,22 @@ One deploy command per app, nothing else in the loop.
 Copy `.env.example` to `.env` (gitignored) and fill in:
 
 ```bash
-OPENROUTER_API_KEY=sk-or-v1-...
-OPENROUTER_MODEL=anthropic/claude-sonnet-4.5
+cp .env.example .env
 ```
 
-Get a key: https://openrouter.ai/keys · models: https://openrouter.ai/models
+| Variable | Notes |
+| --- | --- |
+| `OPENROUTER_API_KEY` | https://openrouter.ai/keys |
+| `OPENROUTER_BASE_URL` | `https://openrouter.ai/api/v1` — leave as is |
+| `OPENROUTER_MODEL` | defaults to `anthropic/claude-haiku-4.5` (cheap, fast) |
+| `PORT` | local only; Cloud Run injects its own |
+| `NEXT_PUBLIC_API_URL` | `http://localhost:8000` until the backend is deployed |
 
-The backend calls OpenRouter through its OpenAI-compatible endpoint
-(`https://openrouter.ai/api/v1`) from LangGraph.
+Model slugs must match https://openrouter.ai/models exactly — a wrong slug fails
+at request time, not at startup. OpenRouter is OpenAI-compatible, so the backend
+uses an OpenAI-style client pointed at `OPENROUTER_BASE_URL`.
+
+One key covers every model, so students can swap providers by editing one line.
 
 ## 6. Scaffold the backend from a LangGraph template
 
@@ -224,21 +232,39 @@ Templates available: `new-langgraph-project-python` (minimal — use this),
 You get `langgraph.json`, `src/agent/graph.py` with a compiled one-node graph,
 `pyproject.toml` + `uv.lock`, and tests.
 
-### About Docker — read this
+### Verify it runs locally
 
-`langgraph dockerfile Dockerfile` generates a Dockerfile, **but it builds on
-`langchain/langgraph-api`**, the LangGraph Platform server image. That image
-expects Postgres *and* Redis and a LangSmith licence — three services, stateful,
-wrong shape for this tutorial.
+Before any deployment work, confirm the scaffold actually works:
 
-So: keep the template's graph, and give it a thin FastAPI wrapper with our own
-Dockerfile (`python:3.12-slim` + `uv`, one stateless container). That is exactly
-what `plan.md` specifies, and what the issue in §8 asks Claude to build:
+```bash
+cd apps/api
+cp .env.example .env
+uvx --from "langgraph-cli[inmem]" langgraph dev --no-browser
+```
 
-- `POST /chat` → invokes the compiled graph, returns the reply
-- `GET /healthz` → returns `{"status":"ok"}`
-- reads `OPENROUTER_API_KEY`, `OPENROUTER_MODEL`, `PORT` from the environment
-- binds `0.0.0.0:$PORT` (Cloud Run injects `PORT`)
+In a second terminal:
+
+```bash
+curl localhost:2024/ok
+# {"ok":true}
+
+curl -X POST localhost:2024/runs/wait \
+  -H 'content-type: application/json' \
+  -d '{"assistant_id":"agent","input":{"changeme":"hello"}}'
+# {"changeme":"output from call_model. Configured with None"}
+```
+
+Two good responses = the graph compiled and ran. Interactive API docs at
+`localhost:2024/docs`. Ctrl-C to stop.
+
+**No LangSmith key and no LangGraph licence are required.** The dev server logs
+`No license key or control plane API key set` and works anyway — those matter
+only for LangSmith tracing and LangSmith Deployment, neither of which we use.
+`LANGSMITH_PROJECT` in `.env.example` is optional; ignore it.
+
+This dev server is not what we deploy. Claude wraps the same graph in a small
+FastAPI app (`POST /chat`, `GET /healthz`, binding `0.0.0.0:$PORT`) with a plain
+`python:3.12-slim` Dockerfile — that is what Cloud Run builds in §2.
 
 ## 7. Scaffold the frontend
 
