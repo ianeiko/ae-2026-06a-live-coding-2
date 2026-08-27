@@ -566,5 +566,3 @@ Network shows `POST https://langgraph-api-...run.app/chat → 200`. A request to
 | `undefined/chat` in the deployed bundle | `NEXT_PUBLIC_API_URL` was added after the build | `vercel --prod` again |
 | 500 naming `OPENROUTER_*` from Cloud Run | env vars dropped on a redeploy | pass the full `--set-env-vars` every time |
 | `Couldn't find any pages or app directory` on a push-triggered build | Vercel Root Directory is the repo root, not `apps/web` | set Root Directory to `apps/web` (above); CLI deploys hide this because they upload the cwd |
-| tracing silently stops after a Cloud Run deploy | `LANGSMITH_*` missing from that deploy's `--set-env-vars` | same fix — pass all six vars |
-| chat works but LangSmith shows nothing | `LANGSMITH_*` never deployed — tracing is off unless the vars are present | include them in `--set-env-vars`; a project with no runs yet does not appear in the UI at all |
