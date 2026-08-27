@@ -519,6 +519,28 @@ Order matters. `NEXT_PUBLIC_*` is inlined into the JS bundle **at build time**,
 so the env var has to exist before `vercel --prod`. Set it after, and the
 deployed bundle still says `undefined/chat` until you redeploy.
 
+One project setting is not in this repo and cannot be: **Root Directory must be
+`apps/web`.** `vercel link` from `apps/web` leaves it at the repo root, which
+only works for CLI deploys — those upload the current directory. Once the
+GitHub repo is connected, every push builds from the repo root instead, where
+there is no `app/` directory, and fails with:
+
+```
+Error: > Couldn't find any `pages` or `app` directory. Please create one under the project root
+```
+
+Set it in Vercel → Project → Settings → Build & Deployment → Root Directory, or:
+
+```bash
+TOKEN=...  # Vercel → Account Settings → Tokens
+curl -X PATCH "https://api.vercel.com/v9/projects/langgraph-chat-web?teamId=$TEAM_ID" \
+  -H "Authorization: Bearer $TOKEN" -H 'content-type: application/json' \
+  -d '{"rootDirectory":"apps/web"}'
+```
+
+After that, pushes to `main` deploy to production on their own and the `vercel`
+CLI is only needed for one-offs.
+
 ### Verify it
 
 ```bash
@@ -543,4 +565,6 @@ Network shows `POST https://langgraph-api-...run.app/chat → 200`. A request to
 | Google-branded 404 on `/healthz` | `/healthz` is reserved by Google's frontend — it answers before the request reaches your container | probe `/health` instead; both are wired in `app.py` |
 | `undefined/chat` in the deployed bundle | `NEXT_PUBLIC_API_URL` was added after the build | `vercel --prod` again |
 | 500 naming `OPENROUTER_*` from Cloud Run | env vars dropped on a redeploy | pass the full `--set-env-vars` every time |
+| `Couldn't find any pages or app directory` on a push-triggered build | Vercel Root Directory is the repo root, not `apps/web` | set Root Directory to `apps/web` (above); CLI deploys hide this because they upload the cwd |
+| tracing silently stops after a Cloud Run deploy | `LANGSMITH_*` missing from that deploy's `--set-env-vars` | same fix — pass all six vars |
 | chat works but LangSmith shows nothing | `LANGSMITH_*` never deployed — tracing is off unless the vars are present | include them in `--set-env-vars`; a project with no runs yet does not appear in the UI at all |
