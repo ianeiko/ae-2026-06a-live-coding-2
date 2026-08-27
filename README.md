@@ -114,6 +114,9 @@ gcloud run deploy langgraph-api \
   --set-env-vars "OPENROUTER_API_KEY=$OPENROUTER_API_KEY,OPENROUTER_MODEL=$OPENROUTER_MODEL"
 ```
 
+Shortened to show the shape. The command actually used, with all six vars, is
+in §11.
+
 `--allow-unauthenticated` makes the service publicly reachable so the Vercel
 frontend can call it. The command prints the service URL — that becomes the
 frontend's `NEXT_PUBLIC_API_URL`.
@@ -214,6 +217,12 @@ The frontend has its own env file, `apps/web/.env.local` (§7):
 `NEXT_PUBLIC_API_URL` — `http://localhost:8000` until the backend is deployed,
 then the Cloud Run URL.
 
+The backend gets a third one, `apps/api/.env`, from its template in §6. It
+carries the same `OPENROUTER_*` values plus the two LangSmith tracing vars
+(`LANGCHAIN_TRACING_V2`, `LANGSMITH_API_KEY`) and `LANGSMITH_PROJECT`, and it
+is the file the Cloud Run deploy in §11 sources — so keep the keys in it
+current, not just in the root `.env`.
+
 Model slugs must match https://openrouter.ai/models exactly — a wrong slug fails
 at request time, not at startup. OpenRouter is OpenAI-compatible, so the backend
 uses an OpenAI-style client pointed at `OPENROUTER_BASE_URL`.
@@ -260,10 +269,13 @@ curl -X POST localhost:2024/runs/wait \
 Two good responses = the graph compiled and ran. Interactive API docs at
 `localhost:2024/docs`. Ctrl-C to stop.
 
-**No LangSmith key and no LangGraph licence are required.** The dev server logs
-`No license key or control plane API key set` and works anyway — those matter
-only for LangSmith tracing and LangSmith Deployment, neither of which we use.
-`LANGSMITH_PROJECT` in `.env.example` is optional; ignore it.
+**No LangGraph licence is required.** The dev server logs `No license key or
+control plane API key set` and works anyway — that is LangSmith Deployment,
+which we don't use. Tracing is a separate thing and we *do* use it: set
+`LANGCHAIN_TRACING_V2=true` plus `LANGSMITH_API_KEY` in `apps/api/.env` (see
+`apps/api/.env.example`) and every graph run shows up under
+`LANGSMITH_PROJECT`. Leave the key out and the graph still runs — you just get
+no traces.
 
 This dev server is not what we deploy. Claude wraps the same graph in a small
 FastAPI app (`POST /chat`, `GET /health`, binding `0.0.0.0:$PORT`) with a
@@ -451,7 +463,7 @@ so read the response, not just the status code.
 | Next.js says `Local: http://localhost:8000` | you sourced the root `.env`, and its `PORT=8000` leaked into `npm run dev` | start the frontend in a clean shell, or `env -u PORT npm run dev` |
 | 500 naming `OPENROUTER_*` | key or model slug missing | fill it in the root `.env`, restart the backend |
 | 404 from OpenRouter | model slug isn't a real one | copy it exactly from https://openrouter.ai/models |
-| `LangSmithError: 403` in test output | stale `LANGSMITH_API_KEY` in `apps/api/.env` | noise, not a failure — set `LANGCHAIN_TRACING_V2=false` there |
+| `LangSmithError: 403` in test output | tracing is on and the key was rejected — usually a key from the other LangSmith region (a US key 403s against `eu.api.smith.langchain.com`) | noise, not a test failure; check the key at https://smith.langchain.com, or set `LANGCHAIN_TRACING_V2=false` in `apps/api/.env` to silence it |
 
 ### The tests
 
@@ -478,7 +490,7 @@ frontend calls the Cloud Run URL from the browser.
 
 ```bash
 cd apps/api
-set -a && . ../../.env && set +a
+set -a && . ./.env && set +a          # apps/api/.env holds all six vars
 gcloud run deploy langgraph-api --source . --allow-unauthenticated \
   --set-env-vars "^##^OPENROUTER_API_KEY=$OPENROUTER_API_KEY##OPENROUTER_BASE_URL=$OPENROUTER_BASE_URL##OPENROUTER_MODEL=$OPENROUTER_MODEL##LANGCHAIN_TRACING_V2=true##LANGSMITH_API_KEY=$LANGSMITH_API_KEY##LANGSMITH_PROJECT=$LANGSMITH_PROJECT"
 ```
@@ -516,6 +528,10 @@ curl -s -X POST $API/chat -H 'content-type: application/json' \
   -d '{"messages":[{"role":"user","content":"say hi in three words"}]}'
 # {"reply":"Hello there friend"}
 ```
+
+Traces land in the LangSmith project named by `LANGSMITH_PROJECT`
+(`ae-2026-06a-live-coding`) at https://smith.langchain.com — one `Chat Graph`
+run per request, with `call_model` and `ChatOpenAI` nested under it.
 
 Then the browser, which is the only check that catches a stale bundle: open
 https://langgraph-chat-web.vercel.app, send a message, and confirm DevTools →
