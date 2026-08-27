@@ -328,10 +328,32 @@ After deploying, repeat this against production: set `NEXT_PUBLIC_API_URL` to th
 Cloud Run URL in the Vercel dashboard (or `vercel env add`), redeploy the
 frontend, and send one message on the live site.
 
-## 8. Create the spec issue
+## 8. Create the spec issues
+
+Two issues, not one: the wiring is worth confirming locally before anything is
+deployed, and a single issue makes "we're happy with local, now ship it" an
+invisible step.
 
 ```bash
-gh issue create --title "Implement LangGraph chat app" --body-file ISSUE.md
+gh issue create --title "Wire the LangGraph backend to the Next.js frontend (local)" \
+  --body-file ISSUE-1.md
+gh issue create --title "Deploy to Cloud Run + Vercel and verify end to end" \
+  --body-file ISSUE-2.md
+```
+
+- **#1** — FastAPI wrapper, real LLM call in the graph node, chat UI, Dockerfile,
+  tests. Acceptance is four local checks, one of them a real browser.
+- **#2** — Cloud Run + Vercel, six prompts, verified end to end. Blocked by #1.
+
+Both issues are committed as `ISSUE-1.md` / `ISSUE-2.md`, so the spec is in the
+clone as well as on GitHub.
+
+Mark the dependency so #2 can't be picked up early:
+
+```bash
+ID=$(gh api repos/<owner>/<repo>/issues/1 --jq .id)
+gh api --method POST repos/<owner>/<repo>/issues/2/dependencies/blocked_by \
+  -F issue_id=$ID
 ```
 
 ## 9. Let Claude build it
@@ -340,6 +362,14 @@ gh issue create --title "Implement LangGraph chat app" --body-file ISSUE.md
 claude
 ```
 
-Prompt:
+Prompt one — local:
 
-> Implement GitHub issue #1 end to end. Use gcloud and vercel CLIs and the installed skills to deploy. Commit when done.
+> Implement GitHub issue #1 end to end. Don't deploy anything. Commit when all four acceptance checks pass.
+
+Then look at it yourself: both servers up, send a message in the browser. Only
+once that feels right, prompt two — deploy:
+
+> Implement GitHub issue #2. Work through its six steps in order, using the gcloud and vercel CLIs and the installed skills. Stop and tell me if a check fails.
+
+Issue #2 is a list of prompts on purpose — you can also paste them one at a
+time and watch each check pass. Same commands either way.

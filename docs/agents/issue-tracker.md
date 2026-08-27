@@ -13,7 +13,7 @@ Issues and specs for this repo live as GitHub issues. Use the `gh` CLI for all o
 
 Infer the repo from `git remote -v`; `gh` does this automatically when run inside a clone.
 
-> **Note:** this clone currently has **no git remote**. Add a GitHub remote (`git remote add origin …`) before any `gh` command will work. Until then, skills that need the tracker will fail — either add the remote or switch this file to the local-markdown convention.
+> Remote: `github.com/ianeiko/ae-2026-06a-live-coding-2`.
 
 ## Pull requests as a triage surface
 
