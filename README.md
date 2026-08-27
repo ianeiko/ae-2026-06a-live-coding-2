@@ -377,10 +377,79 @@ Prompt one — local:
 
 > Implement GitHub issue #1 end to end. Don't deploy anything. Commit when all four acceptance checks pass.
 
-Then look at it yourself: both servers up, send a message in the browser. Only
-once that feels right, prompt two — deploy:
+[Issue #1](https://github.com/ianeiko/ae-2026-06a-live-coding-2/issues/1) is
+**done** — `apps/api` and `apps/web` in this repo are its output. §10 is how you
+run and check it. Then look at it yourself: both servers up, send a message in
+the browser. Only once that feels right, prompt two — deploy:
 
 > Implement GitHub issue #2. Work through its six steps in order, using the gcloud and vercel CLIs and the installed skills. Stop and tell me if a check fails.
 
 Issue #2 is a list of prompts on purpose — you can also paste them one at a
 time and watch each check pass. Same commands either way.
+
+## 10. Run it locally
+
+The output of [issue #1](https://github.com/ianeiko/ae-2026-06a-live-coding-2/issues/1):
+a FastAPI wrapper around the graph (`POST /chat`, `GET /healthz`) and a one-page
+chat UI. Two terminals, because both servers run in the foreground.
+
+**Terminal 1 — backend on 8000.** It reads the keys from the repo-root `.env`
+(§5), so there is nothing to export:
+
+```bash
+cd apps/api
+uv run uvicorn agent.app:app --port 8000 --reload
+# INFO: Uvicorn running on http://127.0.0.1:8000
+```
+
+**Terminal 2 — frontend on 3000:**
+
+```bash
+cd apps/web
+npm run dev
+# - Local: http://localhost:3000
+```
+
+### The three checks
+
+Run them in this order — each one rules out a layer, so the first failure tells
+you where to look.
+
+```bash
+# 1. server up at all — no model call, no key needed
+curl localhost:8000/healthz
+# {"ok":true}
+
+# 2. the key and the model slug work
+curl -X POST localhost:8000/chat \
+  -H 'content-type: application/json' \
+  -d '{"messages":[{"role":"user","content":"say hi in three words"}]}'
+# {"reply":"Hi there friend"}
+```
+
+3. **The browser** — open http://localhost:3000, type a message, hit Send, watch
+   DevTools → Network for `POST localhost:8000/chat`. Do not skip this for curl:
+   `undefined/chat`, CORS, and build-time `NEXT_PUBLIC_*` failures only show up
+   here. The §7 table lists what each one looks like.
+
+`/chat` takes the **whole** history every request — the backend keeps no state,
+so the browser resends every turn. A 500 names the missing env var in its body,
+so read the response, not just the status code.
+
+| What you see | Cause | Fix |
+| --- | --- | --- |
+| Next.js says `Local: http://localhost:8000` | you sourced the root `.env`, and its `PORT=8000` leaked into `npm run dev` | start the frontend in a clean shell, or `env -u PORT npm run dev` |
+| 500 naming `OPENROUTER_*` | key or model slug missing | fill it in the root `.env`, restart the backend |
+| 404 from OpenRouter | model slug isn't a real one | copy it exactly from https://openrouter.ai/models |
+| `LangSmithError: 403` in test output | stale `LANGSMITH_API_KEY` in `apps/api/.env` | noise, not a failure — set `LANGCHAIN_TRACING_V2=false` there |
+
+### The tests
+
+```bash
+cd apps/api
+uv run pytest tests/unit_tests   # stubbed model, no key needed
+uv run pytest -m integration     # one real round trip, needs the key
+cd ../web && npm run build       # types + lint + build
+```
+
+Once all of this is green, #2 (Cloud Run + Vercel) is unblocked.
