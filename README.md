@@ -13,6 +13,8 @@ Prerequisites (assumed installed, not covered here): GitHub account + `git`, Cla
 | uv (Python) | https://docs.astral.sh/uv/ | `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
 | gcloud | https://cloud.google.com/sdk/docs/install | `brew install --cask google-cloud-sdk` |
 | Vercel CLI | https://vercel.com/docs/cli | `npm i -g vercel` |
+| agents-cli | https://github.com/google/agents-cli | `uvx google-agents-cli setup` |
+| LangGraph CLI | https://docs.langchain.com/langgraph-platform/cli | no install — `uvx --from "langgraph-cli[inmem]" langgraph` |
 
 Verify:
 
@@ -134,13 +136,64 @@ vercel login
 
 ## 4. Claude Code plugins / skills
 
-Inside Claude Code:
+These are what let Claude drive the platforms itself instead of you copy-pasting
+commands.
 
-```
-/plugin
+### Vercel — official plugin
+
+Ships skills *and* an MCP server (deployments, logs, env vars, domains).
+
+```bash
+claude plugin marketplace add anthropics/claude-plugins-official   # usually already present
+claude plugin install vercel@claude-plugins-official
+claude plugin list                                                 # expect: vercel ✔ enabled
 ```
 
-Install the Google Cloud and Vercel plugins so Claude can drive deployments directly.
+Or interactively inside Claude Code: `/plugin` → search `vercel` → install.
+
+Gives Claude `/vercel:deploy`, `/vercel:env`, `/vercel:status` and the
+`vercel-cli`, `deployments-cicd`, `nextjs` skills.
+
+### Google Cloud — `agents-cli` skills
+
+There is no Cloud Run plugin in the Claude Code marketplace (only GCS, BigQuery,
+AlloyDB, Firebase). Google ships its own skills bundle instead:
+
+```bash
+uvx google-agents-cli setup      # installs the CLI + skills into Claude Code
+```
+
+Skills only, no CLI: `npx skills add google/agents-cli`
+
+Repo: https://github.com/google/agents-cli · Docs: https://google.github.io/agents-cli/
+
+Installs seven skills; the one that matters here is
+**`google-agents-cli-deploy`** — Cloud Run vs Agent Runtime vs GKE, secrets,
+service accounts, CI/CD, scaling and session config, plus curl/load-test recipes
+per target.
+
+Then authenticate:
+
+```bash
+agents-cli login
+agents-cli login --status
+```
+
+**Caveat — it is ADK-shaped.** `agents-cli scaffold` and `agents-cli deploy`
+assume a Google ADK project layout. Our backend is LangGraph, so we use the
+skills for their Cloud Run *knowledge* and let Claude deploy with plain
+`gcloud run deploy --source .` (§2). Cloud Run takes any container, so this is
+fine — just don't expect `agents-cli deploy` to work on `apps/api` unscaffolded.
+
+### Who actually does the deploying
+
+| Tool | Deploys? | Role in this tutorial |
+| --- | --- | --- |
+| `gcloud` | **yes** | The backend deploy. Cloud Build builds, Cloud Run runs. |
+| `agents-cli` skills | no (`agents-cli deploy` needs an ADK project) | Teaches Claude Cloud Run practice: service accounts, secrets, rollback, scaling |
+| `vercel` (plugin + CLI) | **yes** | The frontend deploy |
+
+One deploy command per app, nothing else in the loop.
 
 ## 5. Keys
 
@@ -156,13 +209,56 @@ Get a key: https://openrouter.ai/keys · models: https://openrouter.ai/models
 The backend calls OpenRouter through its OpenAI-compatible endpoint
 (`https://openrouter.ai/api/v1`) from LangGraph.
 
-## 6. Create the spec issue
+## 6. Scaffold the backend from a LangGraph template
+
+Don't start from an empty folder. The LangGraph CLI ships templates:
+
+```bash
+uvx --from "langgraph-cli[inmem]" langgraph new apps/api \
+  --template new-langgraph-project-python
+```
+
+Templates available: `new-langgraph-project-python` (minimal — use this),
+`agent-python`, `deep-agent-python`, plus `-js` variants.
+
+You get `langgraph.json`, `src/agent/graph.py` with a compiled one-node graph,
+`pyproject.toml` + `uv.lock`, and tests.
+
+### About Docker — read this
+
+`langgraph dockerfile Dockerfile` generates a Dockerfile, **but it builds on
+`langchain/langgraph-api`**, the LangGraph Platform server image. That image
+expects Postgres *and* Redis and a LangSmith licence — three services, stateful,
+wrong shape for this tutorial.
+
+So: keep the template's graph, and give it a thin FastAPI wrapper with our own
+Dockerfile (`python:3.12-slim` + `uv`, one stateless container). That is exactly
+what `plan.md` specifies, and what the issue in §8 asks Claude to build:
+
+- `POST /chat` → invokes the compiled graph, returns the reply
+- `GET /healthz` → returns `{"status":"ok"}`
+- reads `OPENROUTER_API_KEY`, `OPENROUTER_MODEL`, `PORT` from the environment
+- binds `0.0.0.0:$PORT` (Cloud Run injects `PORT`)
+
+## 7. Scaffold the frontend
+
+No template needed — it is one page calling one endpoint.
+
+```bash
+npx create-next-app@latest apps/web --ts --app --tailwind --eslint \
+  --no-src-dir --use-npm --yes
+```
+
+Then strip the boilerplate page down to a message list, an input, and a fetch to
+`process.env.NEXT_PUBLIC_API_URL`. Claude does this in §9.
+
+## 8. Create the spec issue
 
 ```bash
 gh issue create --title "Implement LangGraph chat app" --body-file ISSUE.md
 ```
 
-## 7. Let Claude build it
+## 9. Let Claude build it
 
 ```bash
 claude
