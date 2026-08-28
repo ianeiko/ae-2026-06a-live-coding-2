@@ -6,11 +6,19 @@ Run these as separate prompts, in order. Each one has a check you can see fail.
 
 ## 1. Deploy the backend
 
-> Deploy `apps/api` to Cloud Run as `langgraph-api` with `gcloud run deploy --source . --allow-unauthenticated`, passing `OPENROUTER_API_KEY`, `OPENROUTER_BASE_URL` and `OPENROUTER_MODEL` from my root `.env` via `--set-env-vars`. Consult the `google-agents-cli-deploy` skill for Cloud Run practice. Print the service URL when done.
+> Deploy `apps/api` to Cloud Run as `langgraph-api` with `gcloud run deploy --source . --allow-unauthenticated`, passing all six vars from `apps/api/.env` via `--set-env-vars`: `OPENROUTER_API_KEY`, `OPENROUTER_BASE_URL`, `OPENROUTER_MODEL`, `LANGCHAIN_TRACING_V2`, `LANGSMITH_API_KEY`, `LANGSMITH_PROJECT`. Consult the `google-agents-cli-deploy` skill for Cloud Run practice. Print the service URL when done.
 
 Cloud Build builds the Dockerfile from #1. Do not set `PORT` — Cloud Run injects it.
 
-**Check:** `curl <SERVICE_URL>/healthz` → `{"ok":true}`.
+Source `apps/api/.env`, not the root `.env` — only the former has the LangSmith
+vars. `--set-env-vars` *replaces* the whole set on every deploy, so a later
+redeploy that passes three vars silently turns tracing off.
+
+**Check:** `curl <SERVICE_URL>/health` → `{"ok":true}`. Use `/health`, not
+`/healthz`: Google's frontend reserves `/healthz` and answers it with a
+Google-branded 404 before the request reaches your container, which reads
+exactly like a broken deploy. The request never even appears in the Cloud Run
+logs. `apps/api` wires both paths; only `/health` survives in production.
 
 ## 2. Smoke the deployed API
 
@@ -26,11 +34,17 @@ Almost always a missing or wrong env var — a bad `OPENROUTER_MODEL` slug fails
 
 ## 4. Deploy the frontend
 
-> Deploy `apps/web` to production with `/vercel:deploy prod`. Give me the production URL.
+> Deploy `apps/web` to production with `/vercel:deploy prod`. Then set the Vercel project's **Root Directory** to `apps/web`, and confirm a git push builds green too.
 
-Run it from `apps/web` so the monorepo root-directory setting resolves itself.
+This is a monorepo, so the Root Directory setting is not optional. A CLI deploy
+run from `apps/web` uploads that directory and passes whatever the setting says
+— which hides the problem. A push-triggered build starts at the repo root, finds
+no `app/` there, and fails with `Couldn't find any pages or app directory`. Set
+it once in the dashboard, or `PATCH /v9/projects/<id>` with
+`{"rootDirectory":"apps/web"}`.
 
-**Check:** the URL loads and the chat UI renders.
+**Check:** the URL loads and the chat UI renders, *and* the next push to `main`
+produces a green deployment rather than a build error.
 
 ## 5. Verify end to end
 
@@ -40,13 +54,15 @@ That last part is the actual test: the request must go to the Cloud Run host. If
 
 ## 6. Report
 
-> Give me a table: service, URL, deploy command, verified how. Then `/vercel:status` and `gcloud run services list`.
+> Give me a table: service, URL, deploy command, verified how. Then `/vercel:status` and `gcloud run services list`. Confirm the run appeared in LangSmith.
 
 ## Acceptance
 
-- `<SERVICE_URL>/healthz` returns 200.
+- `<SERVICE_URL>/health` returns 200.
 - `<SERVICE_URL>/chat` returns real model text.
 - The production Vercel URL holds a working conversation, verified in a browser.
+- A push to `main` produces a green Vercel deployment.
+- The request lands as a `Chat Graph` run in the LangSmith project.
 - Both URLs are recorded in the README.
 
 ## Failure modes
@@ -54,6 +70,9 @@ That last part is the actual test: the request must go to the Cloud Run host. If
 | Symptom | Cause | Fix |
 | --- | --- | --- |
 | Build fails on Cloud Build | Dockerfile or deps from #1 | read the build log link the command prints |
-| `/chat` 500s, `/healthz` fine | key or model slug wrong | `gcloud run services update langgraph-api --set-env-vars ...` |
+| `/chat` 500s, `/health` fine | key or model slug wrong | `gcloud run services update langgraph-api --set-env-vars ...` |
 | Frontend calls `undefined/chat` | env var set after the build | re-run `vercel --prod` |
 | CORS error in the browser | middleware missing from #1 | fix in `apps/api`, redeploy |
+| Google-branded 404 on `/healthz` | reserved path, answered before your container | probe `/health` |
+| `Couldn't find any pages or app directory` on a pushed build | Root Directory is the repo root | set it to `apps/web` |
+| chat works, LangSmith empty | `LANGSMITH_*` not in `--set-env-vars` | redeploy with all six vars |
