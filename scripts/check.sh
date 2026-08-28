@@ -40,18 +40,18 @@ fi
 vercel whoami >/dev/null 2>&1 && ok "vercel login" || miss "vercel login" "§3 vercel login"
 
 claude plugin list 2>/dev/null | grep -A3 '^  ❯ vercel@' | grep -q 'enabled' \
-  && ok "vercel plugin" || miss "vercel plugin" "§4 claude plugin install vercel@claude-plugins-official"
+  && ok "vercel plugin" || miss "vercel plugin" "§3 claude plugin install vercel@claude-plugins-official"
 [ -d "$HOME/.claude/skills/google-agents-cli-deploy" ] || [ -d "$HOME/.agents/skills/google-agents-cli-deploy" ] \
-  && ok "google-agents-cli skills" || miss "google-agents-cli skills" "§4 uvx google-agents-cli setup"
+  && ok "google-agents-cli skills" || miss "google-agents-cli skills" "§2 uvx google-agents-cli setup"
 
-[ -f apps/api/pyproject.toml ] && ok "apps/api scaffold" || miss "apps/api scaffold" "§5 langgraph new"
-[ -f apps/web/package.json ]  && ok "apps/web scaffold"  || miss "apps/web scaffold"  "§5 create-next-app"
+[ -f apps/api/pyproject.toml ] && ok "apps/api scaffold" || miss "apps/api scaffold" "§2 langgraph new"
+[ -f apps/web/package.json ]  && ok "apps/web scaffold"  || miss "apps/web scaffold"  "§3 create-next-app"
 
 envset() { grep -E "^$2=.+" "$1" 2>/dev/null | grep -vqE '=\s*(sk-or-v1-\.\.\.|lsv2_pt_\.\.\.|\.\.\.)?\s*$'; }
 for v in OPENROUTER_API_KEY OPENROUTER_BASE_URL OPENROUTER_MODEL LANGCHAIN_TRACING_V2 LANGSMITH_API_KEY LANGSMITH_PROJECT; do
-  envset apps/api/.env "$v" && ok "apps/api/.env $v" || miss "apps/api/.env $v" "§6 Keys"
+  envset apps/api/.env "$v" && ok "apps/api/.env $v" || miss "apps/api/.env $v" "§4 Keys"
 done
-envset apps/web/.env.local NEXT_PUBLIC_API_URL && ok "apps/web/.env.local NEXT_PUBLIC_API_URL" || miss "apps/web/.env.local" "§6 Keys"
+envset apps/web/.env.local NEXT_PUBLIC_API_URL && ok "apps/web/.env.local NEXT_PUBLIC_API_URL" || miss "apps/web/.env.local" "§4 Keys"
 
-[ $fail = 0 ] && echo "all set — go to §7" || echo "fix the MISSING lines, then re-run"
+[ $fail = 0 ] && echo "all set — go to §5" || echo "fix the MISSING lines, then re-run"
 exit $fail

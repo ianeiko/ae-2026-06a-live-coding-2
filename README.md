@@ -10,9 +10,8 @@ does the rest from two prompts: [#1](ISSUE-1.md) wires and tests it locally,
 [#2](ISSUE-2.md) deploys and verifies it live.
 
 ```bash
-gh repo fork ianeiko/ae-2026-06a-live-coding-2 --clone && cd ae-2026-06a-live-coding-2
 bash scripts/check.sh   # tells you which step below is still missing
-claude                  # then paste the two prompts from §7
+claude                  # then paste the two prompts from §5
 ```
 
 ## Prerequisites
@@ -40,7 +39,7 @@ cd ae-2026-06a-live-coding-2
 git remote -v      # origin = your fork, upstream = this repo
 ```
 
-Forks don't copy issues; §7 creates #1/#2 in yours. Later, to pick up upstream
+Forks don't copy issues; §5 creates #1/#2 in yours. Later, to pick up upstream
 changes:
 
 ```bash
@@ -67,8 +66,8 @@ points Cloud Build at `apps/api` in your fork.
 bash scripts/check.sh
 ```
 
-Prints `ok` / `MISSING` for every step in §0–§6 and names the section that
-fixes it. Ends with `all set — go to §7` when nothing is missing.
+Prints `ok` / `MISSING` for every step in §0–§4 and names the section that
+fixes it. Ends with `all set — go to §5` when nothing is missing.
 
 ## 1. Install CLIs
 
@@ -80,9 +79,11 @@ fixes it. Ends with `all set — go to §7` when nothing is missing.
 | Vercel CLI | `npm i -g vercel` | https://vercel.com/docs/cli |
 | gh | `brew install gh` | https://cli.github.com |
 
-LangGraph CLI needs no install — it runs via `uvx` in §5.
+LangGraph CLI needs no install — it runs via `uvx` in §2.3.
 
-## 2. Google Cloud
+## 2. Google Cloud — backend (`apps/api`)
+
+### 2.1 Account, project, billing, APIs
 
 ```bash
 gcloud auth login                                          # CLI identity
@@ -100,18 +101,9 @@ Billing is required — Cloud Run and Cloud Build refuse to run without it. The
 three APIs are the container runtime, the image store, and the builder (so you
 never run `docker build`).
 
-## 3. Vercel login
+### 2.2 Claude skills for Cloud Run
 
 ```bash
-vercel login
-```
-
-## 4. Claude Code plugins / skills
-
-What lets Claude drive the platforms instead of you copy-pasting commands.
-
-```bash
-claude plugin install vercel@claude-plugins-official   # /vercel:deploy, /vercel:env, MCP server
 uvx google-agents-cli setup                            # Google's Cloud Run skills
 agents-cli login
 ```
@@ -120,18 +112,36 @@ agents-cli login
 its `google-agents-cli-deploy` skill for Cloud Run know-how and deploys with
 plain `gcloud run deploy`.
 
-## 5. Scaffold the two apps
+### 2.3 Scaffold the backend
 
 ```bash
 uvx --from "langgraph-cli[inmem]" langgraph new apps/api --template new-langgraph-project-python
+```
+
+A template, not an empty folder: `langgraph.json`, a compiled one-node graph,
+`pyproject.toml` and tests. Issue #1 turns it into the FastAPI app.
+
+## 3. Vercel — frontend (`apps/web`)
+
+### 3.1 Login and Claude plugin
+
+```bash
+vercel login
+claude plugin install vercel@claude-plugins-official   # /vercel:deploy, /vercel:env, MCP server
+```
+
+The plugin is what lets Claude drive Vercel instead of you copy-pasting
+commands.
+
+### 3.2 Scaffold the frontend
+
+```bash
 npx create-next-app@latest apps/web --ts --app --tailwind --eslint --no-src-dir --use-npm --yes
 ```
 
-Templates, not empty folders: `apps/api` gets `langgraph.json`, a compiled
-one-node graph, `pyproject.toml` and tests; `apps/web` gets a starter page.
-Issue #1 turns both into the real thing.
+A starter page; issue #1 turns it into the chat UI.
 
-## 6. Keys
+## 4. Keys
 
 One backend env file — it feeds both the local server and the Cloud Run
 deploy — plus one line for the frontend:
@@ -141,7 +151,7 @@ cp apps/api/.env.example apps/api/.env      # fill in OPENROUTER_API_KEY, LANGSM
 echo 'NEXT_PUBLIC_API_URL=http://localhost:8000' > apps/web/.env.local
 ```
 
-If you scaffolded fresh in §5 the template's `.env.example` lacks the
+If you scaffolded fresh in §2.3 the template's `.env.example` lacks the
 OpenRouter vars — paste in the six from
 [this repo's copy](apps/api/.env.example) instead.
 
@@ -156,7 +166,7 @@ OpenRouter vars — paste in the six from
 Both files are gitignored. Run `bash scripts/check.sh` — it should now say
 `all set`.
 
-## 7. Hand off to Claude
+## 5. Hand off to Claude
 
 The spec is two GitHub issues. Upstream has them
 ([#1](https://github.com/ianeiko/ae-2026-06a-live-coding-2/issues/1),
@@ -173,7 +183,7 @@ Then `claude`, and two prompts. First, local:
 
 > Implement GitHub issue #1 end to end. Don't deploy anything. Commit when all four acceptance checks pass.
 
-Look at the result yourself (§8) — both servers up, a message sent in the
+Look at the result yourself (§6) — both servers up, a message sent in the
 browser. Once that feels right, deploy:
 
 > Implement GitHub issue #2. Work through its six steps in order, using the gcloud and vercel CLIs and the installed skills. Stop and tell me if a check fails.
@@ -181,7 +191,7 @@ browser. Once that feels right, deploy:
 #2 is a list of prompts on purpose — you can also paste them one at a time
 and watch each check pass.
 
-## 8. Run it locally
+## 6. Run it locally
 
 Two terminals; both servers run in the foreground.
 
@@ -204,7 +214,7 @@ and baked-in `NEXT_PUBLIC_*` failures never show in curl.
 Tests: `cd apps/api && uv run pytest tests/unit_tests` (no key needed),
 `uv run pytest -m integration` (one real call), `cd apps/web && npm run build`.
 
-## 9. Live
+## 7. Live
 
 Output of issue #2. Deploy commands and failure modes live in
 [ISSUE-2.md](ISSUE-2.md).

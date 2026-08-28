@@ -1,6 +1,6 @@
 Deploy both apps and verify the live chat end to end. **Blocked by #1** — do not start until its four acceptance checks pass locally.
 
-Prereqs are already done by README §2–§6: `gcloud` authed with billing + APIs + default region, `vercel login`, Vercel plugin installed, `apps/api/.env` filled. If `bash scripts/check.sh` reports anything MISSING, stop and point at the README section it names rather than improvising.
+Prereqs are already done by README §2–§4: `gcloud` authed with billing + APIs + default region, `vercel login`, Vercel plugin installed, `apps/api/.env` filled. If `bash scripts/check.sh` reports anything MISSING, stop and point at the README section it names rather than improvising.
 
 Run these as separate prompts, in order. Each one has a check you can see fail.
 
