@@ -19,7 +19,7 @@ Add deps to `pyproject.toml`: `fastapi`, `uvicorn[standard]`, `langchain-openai`
 
 **`Dockerfile`** — `python:3.12-slim`, install with `uv`, `CMD` runs uvicorn on `$PORT`. Cloud Build uses this in #2; nobody runs `docker build` locally.
 
-Config comes from env vars only: `OPENROUTER_API_KEY`, `OPENROUTER_BASE_URL`, `OPENROUTER_MODEL`, `PORT`. No key literals, no defaults that hide a missing key — fail loudly at first request.
+Config comes from env vars only (`apps/api/.env` locally): `OPENROUTER_API_KEY`, `OPENROUTER_BASE_URL`, `OPENROUTER_MODEL`, `PORT`. No key literals, no defaults that hide a missing key — fail loudly at first request.
 
 ## Frontend — `apps/web`
 
@@ -51,4 +51,4 @@ Replace `tests/integration_tests/test_graph.py` (it asserts the old `changeme` s
 3. Both servers up (8000 + 3000). Using the `/browse` skill: load `localhost:3000`, send a message, confirm the reply renders. Not curl — the common failures (`undefined/chat`, CORS, build-time `NEXT_PUBLIC_*`) only show in a browser.
 4. `cd apps/web && npm run build` — clean, no type or lint errors.
 
-Update README §7's verification block if the contract here differs from what it documents. Commit when all four pass.
+Update README §8 (Run it locally) if the contract here differs from what it documents. Commit when all four pass.

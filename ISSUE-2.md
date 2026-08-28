@@ -1,6 +1,6 @@
 Deploy both apps and verify the live chat end to end. **Blocked by #1** — do not start until its four acceptance checks pass locally.
 
-Prereqs are already done by README §2–§4: `gcloud` authed with billing + APIs + default region, `vercel login`, Vercel plugin installed. If any is missing, stop and point at the README section rather than improvising.
+Prereqs are already done by README §2–§6: `gcloud` authed with billing + APIs + default region, `vercel login`, Vercel plugin installed, `apps/api/.env` filled. If `bash scripts/check.sh` reports anything MISSING, stop and point at the README section it names rather than improvising.
 
 Run these as separate prompts, in order. Each one has a check you can see fail.
 
@@ -10,9 +10,9 @@ Run these as separate prompts, in order. Each one has a check you can see fail.
 
 Cloud Build builds the Dockerfile from #1. Do not set `PORT` — Cloud Run injects it.
 
-Source `apps/api/.env`, not the root `.env` — only the former has the LangSmith
-vars. `--set-env-vars` *replaces* the whole set on every deploy, so a later
-redeploy that passes three vars silently turns tracing off.
+`apps/api/.env` is the only backend env file and holds all six vars.
+`--set-env-vars` *replaces* the whole set on every deploy, so a later redeploy
+that passes three vars silently turns tracing off.
 
 **Check:** `curl <SERVICE_URL>/health` → `{"ok":true}`. Use `/health`, not
 `/healthz`: Google's frontend reserves `/healthz` and answers it with a

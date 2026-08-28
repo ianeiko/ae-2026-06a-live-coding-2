@@ -13,12 +13,9 @@ from pydantic import BaseModel, Field
 
 from agent.graph import graph
 
-# Repo-root .env first — it is the documented home for the backend keys
-# (README §5). apps/api/.env is the LangGraph template's own file and only fills
-# in whatever the root one leaves unset. Neither overrides real env vars, so
-# Cloud Run's injected config always wins.
+# apps/api/.env holds every backend var (README §6). load_dotenv never
+# overrides real env vars, so Cloud Run's injected config always wins.
 _API_DIR = Path(__file__).resolve().parents[2]
-load_dotenv(_API_DIR.parent.parent / ".env")
 load_dotenv(_API_DIR / ".env")
 
 app = FastAPI(title="LangGraph Chat API")
