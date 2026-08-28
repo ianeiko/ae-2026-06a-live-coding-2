@@ -4,7 +4,7 @@
 
 ### Issue tracker
 
-Issues live as GitHub issues, managed via the `gh` CLI (no git remote configured yet). See `docs/agents/issue-tracker.md`.
+Issues live as GitHub issues, managed via the `gh` CLI. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 

@@ -9,7 +9,13 @@ for c in git gh node uv gcloud vercel claude; do
   command -v "$c" >/dev/null 2>&1 && ok "$c" || miss "$c" "§1 Install CLIs"
 done
 
-gh auth status >/dev/null 2>&1 && ok "gh login" || miss "gh login" "§3 gh auth login"
+gh auth status >/dev/null 2>&1 && ok "gh login" || miss "gh login" "§0 gh auth login"
+o=$(git remote get-url origin 2>/dev/null)
+owner=$(echo "$o" | sed -E 's#.*github.com[:/]([^/]+)/.*#\1#')
+me=$(gh api user --jq .login 2>/dev/null)
+if [ -z "$o" ]; then miss "git origin" "§0 fork and clone"
+elif [ -n "$me" ] && [ "$owner" != "$me" ]; then miss "git origin is $owner's repo, not yours" "§0 fork and clone"
+else ok "git origin ($o)"; fi
 
 gcloud auth list --filter=status:ACTIVE --format='value(account)' 2>/dev/null | grep -q . \
   && ok "gcloud login" || miss "gcloud login" "§2 gcloud auth login"

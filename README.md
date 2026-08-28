@@ -10,6 +10,7 @@ does the rest from two prompts: [#1](ISSUE-1.md) wires and tests it locally,
 [#2](ISSUE-2.md) deploys and verifies it live.
 
 ```bash
+gh repo fork ianeiko/ae-2026-06a-live-coding-2 --clone && cd ae-2026-06a-live-coding-2
 bash scripts/check.sh   # tells you which step below is still missing
 claude                  # then paste the two prompts from §7
 ```
@@ -27,13 +28,46 @@ Accounts, not tools — the tools are §1.
 | OpenRouter API key | https://openrouter.ai/keys |
 | LangSmith API key (free tier) | https://smith.langchain.com → Settings → API keys |
 
+## 0. Fork and clone
+
+Fork, don't clone. The fork is a repo you own — you push to it, Vercel deploys
+from it — and GitHub keeps the link to this one so you can pull later fixes.
+
+```bash
+gh auth login
+gh repo fork ianeiko/ae-2026-06a-live-coding-2 --clone
+cd ae-2026-06a-live-coding-2
+git remote -v      # origin = your fork, upstream = this repo
+```
+
+Forks don't copy issues; §7 creates #1/#2 in yours. Later, to pick up upstream
+changes:
+
+```bash
+git pull upstream main
+```
+
+Already have a clone, or used "Use this template"? Point `origin` at your own
+empty repo and add upstream by hand — same result, one link fewer for free:
+
+```bash
+gh repo create <you>/ae-2026-06a-live-coding-2 --private --source . --remote origin --push
+git remote add upstream https://github.com/ianeiko/ae-2026-06a-live-coding-2.git
+```
+
+**Auto-deploys.** Vercel: once #2 has linked the project to your fork with Root
+Directory `apps/web`, every push to `main` builds and deploys — nothing else to
+set up. Cloud Run: stays a manual `gcloud run deploy` (#2); if you want pushes to
+redeploy the backend too, Cloud Run → service → *Set up continuous deployment*
+points Cloud Build at `apps/api` in your fork.
+
 ## Quick check
 
 ```bash
 bash scripts/check.sh
 ```
 
-Prints `ok` / `MISSING` for every step in §1–§6 and names the section that
+Prints `ok` / `MISSING` for every step in §0–§6 and names the section that
 fixes it. Ends with `all set — go to §7` when nothing is missing.
 
 ## 1. Install CLIs
@@ -66,11 +100,10 @@ Billing is required — Cloud Run and Cloud Build refuse to run without it. The
 three APIs are the container runtime, the image store, and the builder (so you
 never run `docker build`).
 
-## 3. Vercel + GitHub logins
+## 3. Vercel login
 
 ```bash
 vercel login
-gh auth login
 ```
 
 ## 4. Claude Code plugins / skills
@@ -125,12 +158,13 @@ Both files are gitignored. Run `bash scripts/check.sh` — it should now say
 
 ## 7. Hand off to Claude
 
-The spec is two GitHub issues. In this repo they exist already
+The spec is two GitHub issues. Upstream has them
 ([#1](https://github.com/ianeiko/ae-2026-06a-live-coding-2/issues/1),
-[#2](https://github.com/ianeiko/ae-2026-06a-live-coding-2/issues/2)); in a
-fresh repo, create them from the files:
+[#2](https://github.com/ianeiko/ae-2026-06a-live-coding-2/issues/2)) but your
+fork doesn't — create them from the files, in your fork:
 
 ```bash
+gh repo set-default    # pick your fork, not ianeiko/…
 gh issue create --title "Wire the LangGraph backend to the Next.js frontend (local)" --body-file ISSUE-1.md
 gh issue create --title "Deploy to Cloud Run + Vercel and verify end to end" --body-file ISSUE-2.md
 ```
