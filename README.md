@@ -34,7 +34,8 @@ git clone https://github.com/<you>/ae-2026-06a-live-coding-2 && cd ae-2026-06a-l
 ## 3. Tools
 
 Open `claude` in the repo and accept the trust dialog (that installs the two
-plugins the deploy needs). Then pick one.
+plugins the deploy needs). Then pick one. Commands below are macOS — on Windows
+use Appendix D instead.
 
 ### The lazy way
 
@@ -45,7 +46,7 @@ Paste this into Claude:
 ### The manual way
 
 ```bash
-brew install --cask google-cloud-sdk && npm i -g vercel            # needs Node and uv — Appendix A
+brew install --cask google-cloud-sdk && npm i -g vercel            # needs Node and uv — Appendix A; Windows: Appendix D
 gcloud auth login && vercel login
 gcloud projects create <PROJECT_ID> && gcloud config set project <PROJECT_ID>
 gcloud billing accounts list
@@ -81,7 +82,8 @@ Claude records your URLs here when ISSUE-2 is done:
 
 ## Appendix A — what else should be on your machine
 
-The lazy prompt installs these; the manual way assumes them.
+The lazy prompt installs these; the manual way assumes them. Windows equivalents
+are in Appendix D.
 
 | Tool | Install (macOS) |
 | --- | --- |
@@ -99,6 +101,7 @@ cd apps/web && npm run dev                                          # terminal 2
 ```
 
 Then http://localhost:3000. DevTools → Network should show `POST localhost:8000/chat`.
+(On Windows run both in Git Bash — Appendix D.)
 
 | What you see | Cause | Fix |
 | --- | --- | --- |
@@ -121,3 +124,35 @@ git pull upstream main
 
 Once ISSUE-2 has linked Vercel to your fork, every push to `main` redeploys the
 frontend. The backend redeploys with `gcloud run deploy` (see ISSUE-2.md).
+
+## Appendix D — Windows
+
+Everything here assumes a **bash** shell, so get one first: install
+[Git for Windows](https://git-scm.com/download/win) and use **Git Bash** for every
+command in this README (or use WSL and follow the macOS path inside it). PowerShell
+and `cmd` won't run `scripts/check.sh`.
+
+Install the tools (PowerShell, once — `winget` ships with Windows 10/11):
+
+| Tool | Install (Windows) |
+| --- | --- |
+| git (+ Git Bash) | `winget install Git.Git` |
+| Node.js 20+ | `winget install OpenJS.NodeJS.LTS` |
+| uv | `winget install astral-sh.uv` |
+| gcloud CLI | `winget install Google.CloudSDK` |
+| Vercel CLI | `npm i -g vercel` |
+| Claude Code | `npm i -g @anthropic-ai/claude-code` |
+
+Then reopen Git Bash (so the new tools are on `PATH`) and continue with §3 — every
+`gcloud` / `vercel` / `cp` / `bash scripts/check.sh` line works there unchanged.
+The only replacement is the first line of the manual way: the two `brew install`
+packages come from the `winget` table above instead.
+
+Windows-only snags:
+
+| What you see | Fix |
+| --- | --- |
+| `bash: scripts/check.sh: No such file` | you're in PowerShell or `cmd` — reopen Git Bash |
+| `gcloud: command not found` in Git Bash | reopen Git Bash after installing; if it persists, restart Windows |
+| `python3: command not found` | check.sh falls back to `python`; install it with `winget install Python.Python.3.12` if neither exists (only the OpenRouter credit line needs it) |
+| CRLF warnings from git | harmless — `git config core.autocrlf input` quiets them |

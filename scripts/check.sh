@@ -2,6 +2,7 @@
 # Prints ok / MISSING for every setup step in README.md and names the section that fixes it.
 cd "$(dirname "$0")/.."
 fail=0
+PY=$(command -v python3 || command -v python)   # python3 on macOS, often just python on Windows
 ok()   { printf 'ok       %s\n' "$1"; }
 miss() { printf 'MISSING  %-36s -> %s\n' "$1" "$2"; fail=1; }
 
@@ -54,9 +55,9 @@ if [ -n "$k" ]; then
   case "$code" in
     200) ok "OpenRouter key accepted"
          bal=$(curl -s -m 8 -H "Authorization: Bearer $k" https://openrouter.ai/api/v1/credits \
-               | python3 -c 'import json,sys;d=json.load(sys.stdin)["data"];print(f"{d["total_credits"]-d["total_usage"]:.2f}")' 2>/dev/null)
+               | "$PY" -c 'import json,sys;d=json.load(sys.stdin)["data"];print(f"{d["total_credits"]-d["total_usage"]:.2f}")' 2>/dev/null)
          if [ -n "$bal" ]; then
-           python3 -c "import sys;sys.exit(0 if $bal>0 else 1)" && ok "OpenRouter credit (\$$bal left)" \
+           "$PY" -c "import sys;sys.exit(0 if $bal>0 else 1)" && ok "OpenRouter credit (\$$bal left)" \
              || miss "OpenRouter credit (\$$bal left)" "§3 Keys — ask for a topped-up key"
          fi ;;
     401|403) miss "OpenRouter key rejected ($code)" "§3 Keys — check the OpenRouter key you were given" ;;
