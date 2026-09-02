@@ -1,12 +1,12 @@
 Deploy both apps and verify the live chat end to end. **Blocked by #1** — do not start until its four acceptance checks pass locally.
 
-Prereqs are already done by README §2–§4: `gcloud` authed with billing + APIs + default region, `vercel login`, Vercel plugin installed, `apps/api/.env` filled. If `bash scripts/check.sh` reports anything MISSING, stop and point at the README section it names rather than improvising.
+Prereqs are already done by README §3: `gcloud` authed with billing + APIs + default region, `vercel login`, the Vercel and Google Cloud plugins installed, `apps/api/.env` filled. If `bash scripts/check.sh` reports anything MISSING, stop and point at the README section it names rather than improvising.
 
 Run these as separate prompts, in order. Each one has a check you can see fail.
 
 ## 1. Deploy the backend
 
-> Deploy `apps/api` to Cloud Run as `langgraph-api` with `gcloud run deploy --source . --allow-unauthenticated`, passing all six vars from `apps/api/.env` via `--set-env-vars`: `OPENROUTER_API_KEY`, `OPENROUTER_BASE_URL`, `OPENROUTER_MODEL`, `LANGCHAIN_TRACING_V2`, `LANGSMITH_API_KEY`, `LANGSMITH_PROJECT`. Consult the `google-agents-cli-deploy` skill for Cloud Run practice. Print the service URL when done.
+> Deploy `apps/api` to Cloud Run as `langgraph-api` with `gcloud run deploy --source . --allow-unauthenticated`, passing all six vars from `apps/api/.env` via `--set-env-vars`: `OPENROUTER_API_KEY`, `OPENROUTER_BASE_URL`, `OPENROUTER_MODEL`, `LANGCHAIN_TRACING_V2`, `LANGSMITH_API_KEY`, `LANGSMITH_PROJECT`. Consult the `cloud-run-basics` skill for Cloud Run practice. Print the service URL when done.
 
 Cloud Build builds the Dockerfile from #1. Do not set `PORT` — Cloud Run injects it.
 
@@ -63,7 +63,7 @@ That last part is the actual test: the request must go to the Cloud Run host. If
 - The production Vercel URL holds a working conversation, verified in a browser.
 - A push to `main` produces a green Vercel deployment.
 - The request lands as a `Chat Graph` run in the LangSmith project.
-- Both URLs are recorded in the README.
+- Both URLs are recorded in the README §4 table.
 
 ## Failure modes
 

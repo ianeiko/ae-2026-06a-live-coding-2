@@ -1,0 +1,9 @@
+{
+  "extraKnownMarketplaces": {
+    "google-plugins": { "source": { "source": "github", "repo": "google/skills" } }
+  },
+  "enabledPlugins": {
+    "google-cloud-developer@google-plugins": true,
+    "vercel@claude-plugins-official": true
+  }
+}

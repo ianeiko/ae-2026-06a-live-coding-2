@@ -51,4 +51,4 @@ Replace `tests/integration_tests/test_graph.py` (it asserts the old `changeme` s
 3. Both servers up (8000 + 3000). Using the `/browse` skill: load `localhost:3000`, send a message, confirm the reply renders. Not curl — the common failures (`undefined/chat`, CORS, build-time `NEXT_PUBLIC_*`) only show in a browser.
 4. `cd apps/web && npm run build` — clean, no type or lint errors.
 
-Update README §6 (Run it locally) if the contract here differs from what it documents. Commit when all four pass.
+Update README Appendix B (Run it locally) if the contract here differs from what it documents. Commit when all four pass.
