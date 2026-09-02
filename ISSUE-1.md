@@ -1,4 +1,4 @@
-Wire the LangGraph backend to the Next.js frontend and prove it works on localhost. No deployment in this issue — that's #2.
+Wire the LangGraph backend to the Next.js frontend and prove it works on localhost. No deployment here — that's ISSUE-2.md.
 
 ## Backend — `apps/api`
 
@@ -17,7 +17,7 @@ Add deps to `pyproject.toml`: `fastapi`, `uvicorn[standard]`, `langchain-openai`
 - `CORSMiddleware` with `allow_origins=["*"]` — fine here because the endpoint is public and unauthenticated; add a comment saying it should be pinned in a real app.
 - Binds `0.0.0.0:$PORT`, default `8000`.
 
-**`Dockerfile`** — `python:3.12-slim`, install with `uv`, `CMD` runs uvicorn on `$PORT`. Cloud Build uses this in #2; nobody runs `docker build` locally.
+**`Dockerfile`** — `python:3.12-slim`, install with `uv`, `CMD` runs uvicorn on `$PORT`. Cloud Build uses this in ISSUE-2.md; nobody runs `docker build` locally.
 
 Config comes from env vars only (`apps/api/.env` locally): `OPENROUTER_API_KEY`, `OPENROUTER_BASE_URL`, `OPENROUTER_MODEL`, `PORT`. No key literals, no defaults that hide a missing key — fail loudly at first request.
 

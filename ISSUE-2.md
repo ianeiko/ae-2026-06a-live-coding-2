@@ -1,4 +1,4 @@
-Deploy both apps and verify the live chat end to end. **Blocked by #1** — do not start until its four acceptance checks pass locally.
+Deploy both apps and verify the live chat end to end. **Blocked by ISSUE-1.md** — do not start until its four acceptance checks pass locally.
 
 Prereqs are already done by README §3: `gcloud` authed with billing + APIs + default region, `vercel login`, the Vercel and Google Cloud plugins installed, `apps/api/.env` filled. If `bash scripts/check.sh` reports anything MISSING, stop and point at the README section it names rather than improvising.
 
@@ -8,7 +8,7 @@ Run these as separate prompts, in order. Each one has a check you can see fail.
 
 > Deploy `apps/api` to Cloud Run as `langgraph-api` with `gcloud run deploy --source . --allow-unauthenticated`, passing all six vars from `apps/api/.env` via `--set-env-vars`: `OPENROUTER_API_KEY`, `OPENROUTER_BASE_URL`, `OPENROUTER_MODEL`, `LANGCHAIN_TRACING_V2`, `LANGSMITH_API_KEY`, `LANGSMITH_PROJECT`. Consult the `cloud-run-basics` skill for Cloud Run practice. Print the service URL when done.
 
-Cloud Build builds the Dockerfile from #1. Do not set `PORT` — Cloud Run injects it.
+Cloud Build builds the Dockerfile from ISSUE-1.md. Do not set `PORT` — Cloud Run injects it.
 
 `apps/api/.env` is the only backend env file and holds all six vars.
 `--set-env-vars` *replaces* the whole set on every deploy, so a later redeploy
@@ -69,10 +69,10 @@ That last part is the actual test: the request must go to the Cloud Run host. If
 
 | Symptom | Cause | Fix |
 | --- | --- | --- |
-| Build fails on Cloud Build | Dockerfile or deps from #1 | read the build log link the command prints |
+| Build fails on Cloud Build | Dockerfile or deps from ISSUE-1.md | read the build log link the command prints |
 | `/chat` 500s, `/health` fine | key or model slug wrong | `gcloud run services update langgraph-api --set-env-vars ...` |
 | Frontend calls `undefined/chat` | env var set after the build | re-run `vercel --prod` |
-| CORS error in the browser | middleware missing from #1 | fix in `apps/api`, redeploy |
+| CORS error in the browser | middleware missing from ISSUE-1.md | fix in `apps/api`, redeploy |
 | Google-branded 404 on `/healthz` | reserved path, answered before your container | probe `/health` |
 | `Couldn't find any pages or app directory` on a pushed build | Root Directory is the repo root | set it to `apps/web` |
 | chat works, LangSmith empty | `LANGSMITH_*` not in `--set-env-vars` | redeploy with all six vars |

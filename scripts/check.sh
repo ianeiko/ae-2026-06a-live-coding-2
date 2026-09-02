@@ -5,16 +5,13 @@ fail=0
 ok()   { printf 'ok       %s\n' "$1"; }
 miss() { printf 'MISSING  %-36s -> %s\n' "$1" "$2"; fail=1; }
 
-for c in git gh node uv; do command -v "$c" >/dev/null 2>&1 && ok "$c" || miss "$c" "Appendix A"; done
-for c in gcloud vercel; do  command -v "$c" >/dev/null 2>&1 && ok "$c" || miss "$c" "§3 Tools"; done
-command -v claude >/dev/null 2>&1 && ok "claude" || miss "claude" "§3 Claude Code"
+for c in git node uv claude; do command -v "$c" >/dev/null 2>&1 && ok "$c" || miss "$c" "Appendix A"; done
+for c in gcloud vercel; do command -v "$c" >/dev/null 2>&1 && ok "$c" || miss "$c" "§3 Tools"; done
 
-gh auth status >/dev/null 2>&1 && ok "gh login" || miss "gh login" "§3 gh auth login"
 o=$(git remote get-url origin 2>/dev/null)
 owner=$(echo "$o" | sed -E 's#.*github.com[:/]([^/]+)/.*#\1#')
-me=$(gh api user --jq .login 2>/dev/null)
 if [ -z "$o" ]; then miss "git origin" "§2 Fork"
-elif [ -n "$me" ] && [ "$owner" != "$me" ]; then miss "git origin is $owner's repo, not yours" "§2 Fork"
+elif [ "$owner" = ianeiko ]; then miss "git origin is the upstream repo, not your fork" "§2 Fork"
 else ok "git origin ($o)"; fi
 
 gcloud auth list --filter=status:ACTIVE --format='value(account)' 2>/dev/null | grep -q . \
@@ -37,8 +34,10 @@ vercel whoami >/dev/null 2>&1 && ok "vercel login" || miss "vercel login" "§3 v
 
 PL=$(claude plugin list 2>/dev/null)
 plugin_on() { echo "$PL" | grep -A3 "^  ❯ $1" | grep Status | grep -qv disabled; }
-plugin_on vercel@claude-plugins-official && ok "vercel plugin" || miss "vercel plugin" "§3 claude plugin install vercel@claude-plugins-official"
-plugin_on google-cloud-developer@google-plugins && ok "google cloud plugin" || miss "google cloud plugin" "§3 claude plugin install google-cloud-developer@google-plugins"
+plugin_on vercel@claude-plugins-official && ok "vercel plugin" \
+  || miss "vercel plugin" "§3 open claude in the repo, or: claude plugin install vercel@claude-plugins-official"
+plugin_on google-cloud-developer@google-plugins && ok "google cloud plugin" \
+  || miss "google cloud plugin" "§3 open claude in the repo, or: claude plugin marketplace add google/skills && claude plugin install google-cloud-developer@google-plugins"
 
 [ -f apps/api/pyproject.toml ] && ok "apps/api" || miss "apps/api (clone incomplete)" "§2 Fork"
 [ -f apps/web/package.json ]  && ok "apps/web" || miss "apps/web (clone incomplete)" "§2 Fork"
@@ -47,7 +46,6 @@ envset() { grep -E "^$2=.+" "$1" 2>/dev/null | grep -vqE '=\s*(sk-or-v1-\.\.\.|l
 for v in OPENROUTER_API_KEY OPENROUTER_BASE_URL OPENROUTER_MODEL LANGCHAIN_TRACING_V2 LANGSMITH_API_KEY LANGSMITH_PROJECT; do
   envset apps/api/.env "$v" && ok "apps/api/.env $v" || miss "apps/api/.env $v" "§3 Keys"
 done
-envset apps/web/.env.local NEXT_PUBLIC_API_URL && ok "apps/web/.env.local NEXT_PUBLIC_API_URL" || miss "apps/web/.env.local" "§3 Keys"
 
 # Does the OpenRouter key work, and is there credit behind it? Skipped when offline.
 k=$(grep -E '^OPENROUTER_API_KEY=' apps/api/.env 2>/dev/null | cut -d= -f2-)
@@ -59,9 +57,9 @@ if [ -n "$k" ]; then
                | python3 -c 'import json,sys;d=json.load(sys.stdin)["data"];print(f"{d["total_credits"]-d["total_usage"]:.2f}")' 2>/dev/null)
          if [ -n "$bal" ]; then
            python3 -c "import sys;sys.exit(0 if $bal>0 else 1)" && ok "OpenRouter credit (\$$bal left)" \
-             || miss "OpenRouter credit (\$$bal left)" "§1 add credit at openrouter.ai/settings/credits"
+             || miss "OpenRouter credit (\$$bal left)" "§3 Keys — ask for a topped-up key"
          fi ;;
-    401|403) miss "OpenRouter key rejected ($code)" "§1 new key at openrouter.ai/keys" ;;
+    401|403) miss "OpenRouter key rejected ($code)" "§3 Keys — check the OpenRouter key you were given" ;;
   esac
 fi
 
