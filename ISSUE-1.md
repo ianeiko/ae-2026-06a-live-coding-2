@@ -1,5 +1,7 @@
 Wire the LangGraph backend to the Next.js frontend and prove it works on localhost. No deployment here — that's ISSUE-2.md.
 
+Prereq: ISSUE-0.md is done — `apps/api` and `apps/web` hold the untouched upstream templates, and `apps/api/.env` / `apps/web/.env` exist. If `apps/` is empty, do ISSUE-0 first.
+
 ## Backend — `apps/api`
 
 Add deps to `pyproject.toml`: `fastapi`, `uvicorn[standard]`, `langchain-openai`.
@@ -12,14 +14,14 @@ Add deps to `pyproject.toml`: `fastapi`, `uvicorn[standard]`, `langchain-openai`
 
 **`src/agent/app.py`** — FastAPI app wrapping the graph:
 
-- `GET /healthz` → `{"ok": true}`. No LLM call, no key needed.
+- `GET /health` **and** `GET /healthz` → `{"ok": true}`. No LLM call, no key needed. Both paths: Google's frontend reserves `/healthz` in production (see ISSUE-2.md), so `/health` is the one that survives the deploy.
 - `POST /chat`, body `{"messages": [{"role": "user", "content": "hi"}]}` → `{"reply": "..."}`. Calls `graph.ainvoke`, returns the last assistant message.
 - `CORSMiddleware` with `allow_origins=["*"]` — fine here because the endpoint is public and unauthenticated; add a comment saying it should be pinned in a real app.
 - Binds `0.0.0.0:$PORT`, default `8000`.
 
 **`Dockerfile`** — `python:3.12-slim`, install with `uv`, `CMD` runs uvicorn on `$PORT`. Cloud Build uses this in ISSUE-2.md; nobody runs `docker build` locally.
 
-Config comes from env vars only (`apps/api/.env` locally): `OPENROUTER_API_KEY`, `OPENROUTER_BASE_URL`, `OPENROUTER_MODEL`, `PORT`. No key literals, no defaults that hide a missing key — fail loudly at first request.
+Config comes from env vars only (`apps/api/.env`, written by ISSUE-0): `OPENROUTER_API_KEY`, `OPENROUTER_BASE_URL`, `OPENROUTER_MODEL`, `PORT`. No key literals, no defaults that hide a missing key — fail loudly at first request.
 
 ## Frontend — `apps/web`
 
@@ -35,7 +37,7 @@ Delete the starter boilerplate (Next/Vercel SVGs in `public/`, unused styles).
 
 Replace `tests/integration_tests/test_graph.py` (it asserts the old `changeme` shape). Keep it small:
 
-- unit: `POST /chat` with a stubbed model returns the reply shape; `GET /healthz` returns 200.
+- unit: `POST /chat` with a stubbed model returns the reply shape; `GET /health` and `GET /healthz` return 200.
 - integration (marked, real key): one round trip through `/chat` returns non-empty text.
 
 ## Acceptance — all four must pass
@@ -43,7 +45,7 @@ Replace `tests/integration_tests/test_graph.py` (it asserts the old `changeme` s
 1. `cd apps/api && uv run pytest tests/unit_tests` — green.
 2. Backend up (`uv run uvicorn agent.app:app --port 8000`), then:
    ```bash
-   curl localhost:8000/healthz
+   curl localhost:8000/health
    curl -X POST localhost:8000/chat -H 'content-type: application/json' \
      -d '{"messages":[{"role":"user","content":"say hi in three words"}]}'
    ```

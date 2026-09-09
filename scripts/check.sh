@@ -5,6 +5,7 @@ fail=0
 PY=$(command -v python3 || command -v python)   # python3 on macOS, often just python on Windows
 ok()   { printf 'ok       %s\n' "$1"; }
 miss() { printf 'MISSING  %-36s -> %s\n' "$1" "$2"; fail=1; }
+todo() { printf 'todo     %-36s -> %s\n' "$1" "$2"; }   # not your job yet — Claude does it
 
 for c in git node uv claude; do command -v "$c" >/dev/null 2>&1 && ok "$c" || miss "$c" "Appendix A"; done
 for c in gcloud vercel; do command -v "$c" >/dev/null 2>&1 && ok "$c" || miss "$c" "§3 Tools"; done
@@ -40,16 +41,19 @@ plugin_on vercel@claude-plugins-official && ok "vercel plugin" \
 plugin_on google-cloud-developer@google-plugins && ok "google cloud plugin" \
   || miss "google cloud plugin" "§3 open claude in the repo, or: claude plugin marketplace add google/skills && claude plugin install google-cloud-developer@google-plugins"
 
-[ -f apps/api/pyproject.toml ] && ok "apps/api" || miss "apps/api (clone incomplete)" "§2 Fork"
-[ -f apps/web/package.json ]  && ok "apps/web" || miss "apps/web (clone incomplete)" "§2 Fork"
+# apps/ is empty until ISSUE-0.md scaffolds it (§4 prompt zero) — informational, never blocking.
+[ -f apps/api/pyproject.toml ] && ok "apps/api scaffolded" || todo "apps/api not scaffolded" "§4 ISSUE-0.md"
+[ -f apps/web/package.json ]  && ok "apps/web scaffolded" || todo "apps/web not scaffolded" "§4 ISSUE-0.md"
 
+# Root .env before ISSUE-0.md; apps/api/.env after it copies them across.
+ENVF=.env; [ -f apps/api/.env ] && ENVF=apps/api/.env
 envset() { grep -E "^$2=.+" "$1" 2>/dev/null | grep -vqE '=\s*(sk-or-v1-\.\.\.|lsv2_pt_\.\.\.|\.\.\.)?\s*$'; }
 for v in OPENROUTER_API_KEY OPENROUTER_BASE_URL OPENROUTER_MODEL LANGCHAIN_TRACING_V2 LANGSMITH_API_KEY LANGSMITH_PROJECT; do
-  envset apps/api/.env "$v" && ok "apps/api/.env $v" || miss "apps/api/.env $v" "§3 Keys"
+  envset "$ENVF" "$v" && ok "$ENVF $v" || miss "$ENVF $v" "§3 Keys"
 done
 
 # Does the OpenRouter key work, and is there credit behind it? Skipped when offline.
-k=$(grep -E '^OPENROUTER_API_KEY=' apps/api/.env 2>/dev/null | cut -d= -f2-)
+k=$(grep -E '^OPENROUTER_API_KEY=' "$ENVF" 2>/dev/null | cut -d= -f2-)
 if [ -n "$k" ]; then
   code=$(curl -s -m 8 -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $k" https://openrouter.ai/api/v1/auth/key)
   case "$code" in

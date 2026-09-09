@@ -1,8 +1,9 @@
 # Publishing a LangGraph App
 
 A chat app you run locally, then put live: FastAPI + LangGraph backend on Google
-Cloud Run (`apps/api`), Next.js frontend on Vercel (`apps/web`). The code is
-already written. You set up two accounts and the CLIs; Claude runs it and deploys it.
+Cloud Run (`apps/api`), Next.js frontend on Vercel (`apps/web`). You start from an
+empty `apps/`: three prompts have Claude scaffold both templates, write the app, and
+deploy it. You set up two accounts and the CLIs.
 
 ## TL;DR
 
@@ -10,12 +11,12 @@ already written. You set up two accounts and the CLIs; Claude runs it and deploy
 2. **Fork** (§2) — fork this repo, clone your fork.
 3. **Tools** (§3) — paste one prompt into Claude, or run the commands.
    `bash scripts/check.sh` tells you when you're done.
-4. **Hand off** (§4) — paste two prompts. Claude does the rest.
+4. **Hand off** (§4) — paste three prompts. Claude does the rest.
 
 ## 1. Accounts
 
-Browser only. Keep the LangSmith key handy — §3 pastes it, together with the
-OpenRouter key you were given.
+Browser only. Keep the LangSmith key handy — §3 pastes it into `.env`, together
+with the OpenRouter key you were given.
 
 | Sign up for | Where | You leave with |
 | --- | --- | --- |
@@ -41,7 +42,7 @@ use Appendix D instead.
 
 Paste this into Claude:
 
-> Set this machine up for this repo. Run `bash scripts/check.sh` and fix every MISSING line until it prints `all set`; README §3 and Appendix A say what each step is. Install tools yourself (Homebrew, npm, uv). Logins and anything that asks for a password are mine: give me the command, I'll run it in another terminal and say "done". Google Cloud: create a project named `langgraph-chat-<4 random digits>`, link my billing account (ask which if I have several), enable the three APIs, set run/region to europe-west1. Copy `apps/api/.env.example` to `apps/api/.env` and tell me which two values to paste where — never ask me to paste secrets into this chat. Re-run the check after each fix.
+> Set this machine up for this repo. Run `bash scripts/check.sh` and fix every MISSING line until it prints `all set`; README §3 and Appendix A say what each step is. Install tools yourself (Homebrew, npm, uv). Logins and anything that asks for a password are mine: give me the command, I'll run it in another terminal and say "done". Google Cloud: create a project named `langgraph-chat-<4 random digits>`, link my billing account (ask which if I have several), enable the three APIs, set run/region to europe-west1. Copy `.env.example` to `.env` and tell me which two values to paste where — never ask me to paste secrets into this chat. Don't scaffold or write any app code yet, that's §4. Re-run the check after each fix.
 
 ### The manual way
 
@@ -53,7 +54,7 @@ gcloud billing accounts list
 gcloud billing projects link <PROJECT_ID> --billing-account=<ACCOUNT_ID>
 gcloud services enable run.googleapis.com artifactregistry.googleapis.com cloudbuild.googleapis.com
 gcloud config set run/region europe-west1
-cp apps/api/.env.example apps/api/.env                             # paste OPENROUTER_API_KEY and LANGSMITH_API_KEY
+cp .env.example .env                                               # paste OPENROUTER_API_KEY and LANGSMITH_API_KEY
 ```
 
 Either way, finish with:
@@ -62,9 +63,16 @@ Either way, finish with:
 bash scripts/check.sh      # all set — go to §4
 ```
 
+`todo` lines about `apps/` are expected here: `apps/` is empty until §4 fills it.
+Only `MISSING` lines block you.
+
 ## 4. Hand off to Claude
 
-Open `claude` in the repo. Prompt one — local:
+Open `claude` in the repo. Prompt zero — scaffold the two templates:
+
+> Read ISSUE-0.md and implement it. Scaffold only — no app logic, no deploy. Commit when all four acceptance checks pass.
+
+Prompt one — local:
 
 > Read ISSUE-1.md and implement it end to end. Don't deploy anything. Commit when all four acceptance checks pass.
 
@@ -77,8 +85,8 @@ Claude records your URLs here when ISSUE-2 is done:
 
 | Service | URL | Deployed with |
 | --- | --- | --- |
-| backend (`apps/api`) | https://langgraph-api-116820946223.europe-west1.run.app | `gcloud run deploy` |
-| frontend (`apps/web`) | https://langgraph-chat-web.vercel.app | `vercel --prod` |
+| backend (`apps/api`) | _(filled in by ISSUE-2)_ | `gcloud run deploy` |
+| frontend (`apps/web`) | _(filled in by ISSUE-2)_ | `vercel --prod` |
 
 ## Appendix A — what else should be on your machine
 
@@ -93,7 +101,7 @@ are in Appendix D.
 
 ## Appendix B — run it locally
 
-Two terminals:
+Both apps exist only after ISSUE-0, and the chat works only after ISSUE-1. Two terminals:
 
 ```bash
 cd apps/api && uv run uvicorn agent.app:app --port 8000 --reload   # terminal 1
@@ -105,8 +113,8 @@ Then http://localhost:3000. DevTools → Network should show `POST localhost:800
 
 | What you see | Cause | Fix |
 | --- | --- | --- |
-| Request to `undefined/chat` | `NEXT_PUBLIC_API_URL` unset | it lives in `apps/web/.env`; restart `npm run dev` |
-| 500 naming `OPENROUTER_*` | key or model slug missing | fix `apps/api/.env`, restart the backend |
+| Request to `undefined/chat` | `NEXT_PUBLIC_API_URL` unset | it lives in `apps/web/.env`, written by ISSUE-0; restart `npm run dev` |
+| 500 naming `OPENROUTER_*` | key or model slug missing | fix `apps/api/.env` (ISSUE-0 copies it from root `.env`), restart the backend |
 | 404 from OpenRouter | model slug isn't real | copy it exactly from https://openrouter.ai/models |
 | Connection refused | backend not running | start terminal 1 first |
 
