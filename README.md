@@ -34,20 +34,26 @@ git clone https://github.com/<you>/ae-2026-06a-live-coding-2 && cd ae-2026-06a-l
 
 ## 3. Tools
 
-Open `claude` in the repo and accept the trust dialog (that installs the two
-plugins the deploy needs). Then pick one. Commands below are macOS — on Windows
-use Appendix D instead.
+Open `claude` in the repo and accept the trust dialog. That reads the repo's
+`.claude/settings.json` and installs the two plugins ISSUE-2 deploys with —
+`vercel` (`/vercel:deploy`, `/vercel:env`, `/vercel:status`) and
+`google-cloud-developer` (the `cloud-run-basics` skill) — plus the repo's own
+`.claude/skills/`. Say yes when it offers to install them; `scripts/check.sh`
+fails until both are enabled. Then pick one of the two paths below. Commands are
+macOS — on Windows use Appendix D instead.
 
 ### The lazy way
 
 Paste this into Claude:
 
-> Set this machine up for this repo. Run `bash scripts/check.sh` and fix every MISSING line until it prints `all set`; README §3 and Appendix A say what each step is. Install tools yourself (Homebrew, npm, uv). Logins and anything that asks for a password are mine: give me the command, I'll run it in another terminal and say "done". Google Cloud: create a project named `langgraph-chat-<4 random digits>`, link my billing account (ask which if I have several), enable the three APIs, set run/region to europe-west1. Copy `.env.example` to `.env` and tell me which two values to paste where — never ask me to paste secrets into this chat. Don't scaffold or write any app code yet, that's §4. Re-run the check after each fix.
+> Set this machine up for this repo. Run `bash scripts/check.sh` and fix every MISSING line until it prints `all set`; README §3 and Appendix A say what each step is. Install tools yourself (Homebrew, npm, uv) and the two plugins (`vercel@claude-plugins-official`, `google-cloud-developer@google-plugins`). Logins and anything that asks for a password are mine: give me the command, I'll run it in another terminal and say "done". Google Cloud: create a project named `langgraph-chat-<4 random digits>`, link my billing account (ask which if I have several), enable the three APIs, set run/region to europe-west1. Copy `.env.example` to `.env` and tell me which two values to paste where — never ask me to paste secrets into this chat. Don't scaffold or write any app code yet, that's §4. Re-run the check after each fix.
 
 ### The manual way
 
 ```bash
 brew install --cask google-cloud-sdk && npm i -g vercel            # needs Node and uv — Appendix A; Windows: Appendix D
+claude plugin install vercel@claude-plugins-official                # skip both if the trust dialog already did it
+claude plugin marketplace add google/skills && claude plugin install google-cloud-developer@google-plugins
 gcloud auth login && vercel login
 gcloud projects create <PROJECT_ID> && gcloud config set project <PROJECT_ID>
 gcloud billing accounts list
@@ -98,6 +104,7 @@ are in Appendix D.
 | Homebrew | `/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"` |
 | git, Node.js 20+, uv | `brew install git node uv` |
 | Claude Code | `curl -fsSL https://claude.ai/install.sh \| bash` |
+| Claude plugins | `claude plugin install vercel@claude-plugins-official`, then `claude plugin marketplace add google/skills && claude plugin install google-cloud-developer@google-plugins` — `claude plugin list` shows both enabled |
 
 ## Appendix B — run it locally
 
@@ -150,6 +157,9 @@ Install the tools (PowerShell, once — `winget` ships with Windows 10/11):
 | gcloud CLI | `winget install Google.CloudSDK` |
 | Vercel CLI | `npm i -g vercel` |
 | Claude Code | `npm i -g @anthropic-ai/claude-code` |
+
+The two Claude plugins install the same way on Windows (`claude plugin install ...`
+from Git Bash) — see Appendix A.
 
 Then reopen Git Bash (so the new tools are on `PATH`) and continue with §3 — every
 `gcloud` / `vercel` / `cp` / `bash scripts/check.sh` line works there unchanged.
